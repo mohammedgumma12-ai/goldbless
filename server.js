@@ -18,7 +18,7 @@ const sessionCookie = 'gb_session';
 const tronAddressPattern = /^T[1-9A-HJ-NP-Za-km-z]{33}$/;
 const txHashPattern = /^[a-fA-F0-9]{64}$/;
 const scrypt = promisify(scryptCallback);
-const requiredEnv = ['DATABASE_URL', 'RESEND_API_KEY', 'SESSION_SECRET', 'OTP_SECRET', 'ADMIN_API_TOKEN'];
+const requiredEnv = ['DATABASE_URL', 'BREVO_API_KEY', 'SESSION_SECRET', 'OTP_SECRET', 'ADMIN_API_TOKEN'];
 
 function requireConfigured(...keys) {
   const missing = keys.filter((key) => !process.env[key]);
@@ -120,8 +120,7 @@ async function requireUser(request, response, next) {
     if (!token) return response.status(401).json({ error: 'يجب تسجيل الدخول أولاً' });
     const tokenHash = hash(token, process.env.SESSION_SECRET);
     const result = await pool.query(
-      `SELECT users.id, users.email, users.invite_code
-        , users.phone
+      `SELECT users.id, users.email, users.invite_code, users.phone
        FROM sessions JOIN users ON users.id = sessions.user_id
        WHERE sessions.token_hash = $1 AND sessions.expires_at > NOW()`,
       [tokenHash]
@@ -141,23 +140,43 @@ function requireAdmin(request, response, next) {
   next();
 }
 
+// دالة إرسال البريد باستخدام Brevo API
 async function sendOtp(email, code, purpose) {
-  const subject = purpose === 'register' ? 'توثيق البريد الإلكتروني' : 'رمز استعادة كلمة المرور';
-  const purposeText = purpose === 'register' ? 'لتوثيق بريدك الإلكتروني' : 'لاستعادة كلمة المرور';
-  const result = await fetch('https://api.resend.com/emails', {
+  const apiKey = process.env.BREVO_API_KEY;
+  const senderEmail = process.env.SENDER_EMAIL || 'mohammedgumma12@gmail.com';
+  const subject = purpose === 'register' ? 'توثيق البريد الإلكتروني - Goldbless' : 'رمز استعادة كلمة المرور - Goldbless';
+  const purposeText = purpose === 'register' ? 'لتوثيق حسابك وتسجيل الدخول' : 'لاستعادة كلمة المرور الخاصة بك';
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json'
+      'accept': 'application/json',
+      'api-key': apiKey,
+      'content-type': 'application/json'
     },
     body: JSON.stringify({
-      from: process.env.FROM_EMAIL || 'onboarding@resend.dev',
-      to: [email],
+      sender: { name: 'Goldbless Platform', email: senderEmail },
+      to: [{ email }],
       subject,
-      text: `رمزك ${purposeText} هو ${code}. تنتهي صلاحيته خلال 10 دقائق.`
+      htmlContent: `
+        <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px; direction: rtl; background-color: #f9f9f9;">
+          <div style="max-width: 500px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+            <h2 style="color: #1a1a1a; margin-bottom: 20px;">منصة Goldbless</h2>
+            <p style="color: #555555; font-size: 16px;">رمز التحقق الخاص بك ${purposeText} هو:</p>
+            <h1 style="color: #d4af37; font-size: 36px; letter-spacing: 6px; margin: 20px 0;">${code}</h1>
+            <p style="color: #888888; font-size: 14px;">هذا الرمز صالح لمدة 10 دقائق فقط. يرجى عدم مشاركته مع أي شخص.</p>
+          </div>
+        </div>
+      `
     })
   });
-  if (!result.ok) throw new Error(`Email delivery failed with status ${result.status}`);
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Brevo API error: ${response.status}`);
+  }
+
+  return await response.json();
 }
 
 app.get('/api/config', (_request, response) => {
@@ -168,13 +187,13 @@ app.get('/api/config', (_request, response) => {
   });
 });
 
-app.post('/api/auth/register/request-code', requireDatabase, requireServices('RESEND_API_KEY', 'OTP_SECRET'), otpLimiter, async (request, response, next) => {
+app.post('/api/auth/register/request-code', requireDatabase, requireServices('BREVO_API_KEY', 'OTP_SECRET'), otpLimiter, async (request, response, next) => {
   try {
     const email = normalizeEmail(request.body?.email);
     const phone = normalizePhone(request.body?.phone);
     const password = typeof request.body?.password === 'string' ? request.body.password : '';
     const inviteCode = typeof request.body?.inviteCode === 'string' ? request.body.inviteCode.trim() : '';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\+[1-9]\d{7,14}$/.test(phone)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) \vert{}\vert{} !/^\+[1-9]\d{7,14}$/.test(phone)) {
       return response.status(400).json({ error: 'تحقق من البريد الإلكتروني ورقم الهاتف مع مفتاح الدولة' });
     }
     if (!/^\d{8}$/.test(password)) return response.status(400).json({ error: 'كلمة المرور يجب أن تكون 8 أرقام بالضبط' });
@@ -204,7 +223,7 @@ app.post('/api/auth/login', requireDatabase, requireServices('SESSION_SECRET'), 
   try {
     const phone = normalizePhone(request.body?.phone);
     const password = typeof request.body?.password === 'string' ? request.body.password : '';
-    if (!/^\+[1-9]\d{7,14}$/.test(phone) || !/^\d{8}$/.test(password)) {
+    if (!/^\+[1-9]\d{7,14}$/.test(phone) \vert{}\vert{} !/^\d{8}$/.test(password)) {
       return response.status(400).json({ error: 'أدخل رقم الهاتف الدولي وكلمة المرور ذات 8 أرقام' });
     }
     const result = await pool.query(
@@ -223,7 +242,7 @@ app.post('/api/auth/login', requireDatabase, requireServices('SESSION_SECRET'), 
   }
 });
 
-app.post('/api/auth/recovery/request-code', requireDatabase, requireServices('RESEND_API_KEY', 'OTP_SECRET'), otpLimiter, async (request, response, next) => {
+app.post('/api/auth/recovery/request-code', requireDatabase, requireServices('BREVO_API_KEY', 'OTP_SECRET'), otpLimiter, async (request, response, next) => {
   try {
     const email = normalizeEmail(request.body?.email);
     const phone = normalizePhone(request.body?.phone);
@@ -241,7 +260,7 @@ app.post('/api/auth/recovery/reset', requireDatabase, requireServices('OTP_SECRE
   const phone = normalizePhone(request.body?.phone);
   const code = typeof request.body?.code === 'string' ? request.body.code.trim() : '';
   const password = typeof request.body?.password === 'string' ? request.body.password : '';
-  if (!/^\d{6}$/.test(code) || !/^\d{8}$/.test(password)) {
+  if (!/^\d{6}$/.test(code) \vert{}\vert{} !/^\d{8}$/.test(password)) {
     return response.status(400).json({ error: 'رمز الاستعادة أو كلمة المرور الجديدة غير صالحة' });
   }
   let client;
