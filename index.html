@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Goldbless | الموقع</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <div id="authScreen" class="auth-screen active">
+        <div class="toast" id="toast"></div>
+
+        <div class="auth-card">
+          <div class="brand-wrap">
+            <div class="brand-mark">GB</div>
+            <h1>Goldbless Platform</h1>
+            <p>منصة التكميم والاستثمار الذكي عبر الإنترنت</p>
+          </div>
+          <div class="auth-tabs" id="authTabs">
+            <button class="tab active" data-mode="login">تسجيل الدخول</button>
+            <button class="tab" data-mode="register">حساب جديد</button>
+          </div>
+          <form id="loginForm" class="auth-form active">
+            <div class="field-group">
+              <label>رقم الهاتف مع مفتاح الدولة</label>
+              <input type="tel" id="loginPhone" placeholder="+966500000000" autocomplete="tel" required />
+            </div>
+
+            <div class="field-group">
+              <div class="label-row">
+                <label for="loginPassword">كلمة المرور (8 أرقام)</label>
+                <button type="button" class="link-btn" data-mode="forgot">نسيت كلمة المرور؟</button>
+              </div>
+              <input type="password" id="loginPassword" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" autocomplete="current-password" required />
+            </div>
+
+            <button type="submit" class="primary-btn">تسجيل الدخول</button>
+          </form>
+
+          <form id="registerForm" class="auth-form">
+            <div class="field-group">
+              <label>الدولة ورقم الهاتف</label>
+              <div class="phone-row">
+                <select id="countryCodeRegister">
+                  <option value="+1">+1 (USA / CAN)</option>
+                  <option value="+7">+7 (روسيا / كازاخستان)</option>
+                  <option value="+20">+20 (مصر)</option>
+                  <option value="+27">+27 (جنوب أفريقيا)</option>
+                  <option value="+30">+30 (اليونان)</option>
+                  <option value="+31">+31 (هولندا)</option>
+                  <option value="+32">+32 (بلجيكا)</option>
+                  <option value="+33">+33 (فرنسا)</option>
+                  <option value="+34">+34 (إسبانيا)</option>
+                  <option value="+36">+36 (المجر)</option>
+                  <option value="+39">+39 (إيطاليا)</option>
+                  <option value="+41">+41 (سويسرا)</option>
+                  <option value="+44">+44 (المملكة المتحدة)</option>
+                  <option value="+45">+45 (الدنمارك)</option>
+                  <option value="+46">+46 (السويد)</option>
+                  <option value="+47">+47 (النرويج)</option>
+                  <option value="+48">+48 (بولندا)</option>
+                  <option value="+49">+49 (ألمانيا)</option>
+                  <option value="+52">+52 (المكسيك)</option>
+                  <option value="+55">+55 (البرازيل)</option>
+                  <option value="+61">+61 (أستراليا)</option>
+                  <option value="+62">+62 (إندونيسيا)</option>
+                  <option value="+63">+63 (الفلبين)</option>
+                  <option value="+64">+64 (نيوزيلندا)</option>
+                  <option value="+65">+65 (سنغافورة)</option>
+                  <option value="+66">+66 (تايلاند)</option>
+                  <option value="+81">+81 (اليابان)</option>
+                  <option value="+82">+82 (كوريا الجنوبية)</option>
+                  <option value="+84">+84 (فيتنام)</option>
+                  <option value="+86">+86 (الصين)</option>
+                  <option value="+90">+90 (تركيا)</option>
+                  <option value="+91">+91 (الهند)</option>
+                  <option value="+92">+92 (باكستان)</option>
+                  <option value="+94">+94 (سريلانكا)</option>
+                  <option value="+98">+98 (إيران)</option>
+                  <option value="+212">+212 (المغرب)</option>
+                  <option value="+213">+213 (الجزائر)</option>
+                  <option value="+216">+216 (تونس)</option>
+                  <option value="+218">+218 (ليبيا)</option>
+                  <option value="+249">+249 (السودان)</option>
+                  <option value="+966">+966 (السعودية)</option>
+                  <option value="+965">+965 (الكويت)</option>
+                  <option value="+971">+971 (الإمارات)</option>
+                  <option value="+973">+973 (البحرين)</option>
+                  <option value="+974">+974 (قطر)</option>
+                  <option value="+968">+968 (عمان)</option>
+                  <option value="+967">+967 (اليمن)</option>
+                  <option value="+961">+961 (لبنان)</option>
+                  <option value="+962">+962 (الأردن)</option>
+                  <option value="+963">+963 (سوريا)</option>
+                  <option value="+964">+964 (العراق)</option>
+                  <option value="+970">+970 (فلسطين)</option>
+                </select>
+                <input type="text" id="registerPhone" placeholder="رقم الهاتف" />
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label>البريد الإلكتروني (ضروري لاستعادة كلمة السر)</label>
+              <input type="email" id="registerEmail" placeholder="name@example.com" autocomplete="email" required />
+            </div>
+
+            <div class="field-group">
+              <label for="registerPassword">كلمة المرور (8 أرقام)</label>
+              <input type="password" id="registerPassword" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" autocomplete="new-password" required />
+            </div>
+
+            <div class="field-group">
+              <label>كود الإحالة / الدعوة (إجباري)</label>
+              <input type="text" id="inviteCodeInput" placeholder="أدخل كود الإحالة" />
+            </div>
+
+            <div class="field-group hidden" id="registerOtpBlock">
+              <label>رمز التحقق المرسل إلى بريدك</label>
+              <input type="text" id="registerCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
+            </div>
+
+            <button type="submit" id="registerSubmitBtn" class="primary-btn">إرسال رمز التحقق</button>
+          </form>
+
+          <form id="forgotForm" class="auth-form">
+            <div class="field-group">
+              <label for="recoveryPhone">رقم الهاتف المسجل</label>
+              <input type="tel" id="recoveryPhone" placeholder="+966500000000" autocomplete="tel" required />
+            </div>
+            <div class="field-group">
+              <label for="recoveryEmail">البريد الإلكتروني الموثق</label>
+              <input type="email" id="recoveryEmail" placeholder="name@example.com" autocomplete="email" required />
+            </div>
+            <button id="recoverySendBtn" type="button" class="ghost-btn">إرسال رمز الاستعادة</button>
+            <div id="recoveryOtpBlock" class="hidden">
+              <div class="field-group">
+                <label for="recoveryCode">رمز الاستعادة</label>
+                <input type="text" id="recoveryCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
+              </div>
+              <div class="field-group">
+                <label for="recoveryPassword">كلمة المرور الجديدة (8 أرقام)</label>
+                <input type="password" id="recoveryPassword" inputmode="numeric" maxlength="8" pattern="[0-9]{8}" autocomplete="new-password" />
+              </div>
+              <button type="submit" class="primary-btn">حفظ كلمة المرور الجديدة</button>
+            </div>
+            <button type="button" class="link-btn dark" data-mode="login">العودة لتسجيل الدخول</button>
+          </form>
+        </div>
+      </div>
+
+      <div id="dashboardScreen" class="dashboard-screen">
+        <div class="mobile-shell">
+          <header class="topbar">
+            <div class="logo-box">
+              <span>GB</span>
+            </div>
+            <div class="brand-word">Goldbless</div>
+            <div class="top-actions">
+              <div class="lang-pill"><span>AR</span></div>
+              <div class="bell-wrap"><span class="dot"></span></div>
+            </div>
+          </header>
+
+          <main class="content-area">
+            <section class="page-panel active" id="homePage">
+              <div class="info-banner">الرصيد الحقيقي يعرض الإيداعات المؤكدة فقط. المحاكاة التجريبية منفصلة وغير قابلة للسحب.</div>
+
+              <div class="quick-actions">
+                <button class="quick-item" data-target="assets"><span class="icon">⇣</span><span>إيداع</span></button>
+                <button class="quick-item" data-target="assets"><span class="icon">⇡</span><span>سحب</span></button>
+                <button class="quick-item" id="copyReferralBtn"><span class="icon">👥</span><span>دعوة أصدقاء</span></button>
+                <button class="quick-item" data-target="quantify"><span class="icon">✓</span><span>المستويات</span></button>
+              </div>
+
+              <div class="balance-card hero-card">
+                <div class="card-head">
+                  <div>
+                    <small>الرصيد الحقيقي المؤكد (USDT)</small>
+                    <h2 id="totalAssets">0.00</h2>
+                  </div>
+                  <span class="level-pill" id="levelBadge">Level 1</span>
+                </div>
+
+                <div class="stats-grid">
+                  <div>
+                    <small>الأصول المتاحة</small>
+                    <strong id="flexibleAssets">0.00 USDT</strong>
+                  </div>
+                  <div>
+                    <small>أرباح الفريق</small>
+                    <strong class="green" id="teamIncome">+0.00 USDT</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="status-strip">
+                <div>
+                  <span>إيداع رأس المال</span>
+                  <strong id="depositStatus">غير مفعّل</strong>
+                </div>
+                <div>
+                  <span>حالة الخدمة</span>
+                  <strong id="statusRate">غير مفعّلة</strong>
+                </div>
+                <div>
+                  <span>الحالة</span>
+                  <strong id="statusState">جاهز</strong>
+                </div>
+              </div>
+
+              <div class="promo-box">
+                <div>
+                  <h4>رابط الدعوة</h4>
+                  <p>شارك رابطك لمتابعة الإحالات المسجلة فعليًا.</p>
+                </div>
+                <button id="copyPromoBtn" class="promo-btn">نسخ الرابط</button>
+              </div>
+            </section>
+
+            <section class="page-panel" id="teamPage">
+              <h3>نظرة عامة على الفريق (Team Data)</h3>
+
+              <div class="team-overview">
+                <div class="metric-box">
+                  <small>أعضاء الفريق الكلي</small>
+                  <strong id="teamMemberCount">0</strong>
+                </div>
+                <div class="metric-box">
+                  <small>الإحالات الحالية</small>
+                  <strong id="referralCountText" class="green">0 / 6</strong>
+                </div>
+              </div>
+
+              <div class="invite-box">
+                <small>كود الدعوة الخاص بك (Invite Code)</small>
+                <div class="invite-row">
+                  <span id="inviteCodeDisplay">GB123456</span>
+                  <button id="copyInviteBtn" class="small-btn">نسخ الرابط</button>
+                </div>
+              </div>
+
+              <p class="hint-text">تظهر أعداد الإحالات بعد ربط الحساب بقاعدة البيانات والتحقق من التسجيلات.</p>
+            </section>
+
+            <section class="page-panel" id="quantifyPage">
+              <div class="quantify-top">
+                <div class="metric-box">
+                  <small>أرباح المحاكاة (غير نقدية)</small>
+                  <strong id="quantifyLeftText" class="gold">0.00 Demo</strong>
+                </div>
+                <div class="metric-box">
+                  <small>الرصيد التجريبي</small>
+                  <strong id="todayProfitText" class="green">0.00 Demo</strong>
+                </div>
+              </div>
+
+              <div class="level-banner">
+                <div>
+                  <small>الخدمة</small>
+                  <strong id="currentLevelText" class="green">غير مفعّلة</strong>
+                </div>
+                <div>
+                  <small>طبيعة الرصيد</small>
+                  <strong id="profitRateText" class="gold">تجريبي فقط</strong>
+                </div>
+              </div>
+
+              <div class="launch-wrap">
+                <label for="demoCapital">رأس مال المحاكاة فقط (Demo)</label>
+                <input id="demoCapital" type="number" min="1" step="0.01" placeholder="قيمة افتراضية للتجربة" />
+                <button id="launchQuantify" class="quantify-btn" type="button">
+                  <span class="zap">⚡</span>
+                  <span>Single Goldbless Quantify Launch</span>
+                </button>
+              </div>
+
+              <p class="hint-text">الأرباح المعروضة هنا محاكاة محلية للتجربة فقط، وليست USDT أو التزامًا بالدفع ولا يمكن سحبها.</p>
+            </section>
+
+            <section class="page-panel" id="assetsPage">
+              <h3>إدارة الأصول والعمليات المالية</h3>
+
+              <div class="asset-card">
+                <h4>إيداع رأس المال</h4>
+                <p class="hint-text">الإيداع الحقيقي غير مفعّل في هذه النسخة. لا ترسل أموالًا؛ استخدم المحاكاة التجريبية فقط.</p>
+                <button id="depositBtn" class="primary-border-btn" style="margin-top: 10px;" disabled>الإيداع غير متاح</button>
+              </div>
+
+              <div class="asset-card withdraw-card">
+                <h4>طلب سحب الأرباح (Withdrawal)</h4>
+                <label>عنوان المحفظة (USDT TRC20)</label>
+                <input id="withdrawWallet" type="text" placeholder="أدخل عنوان محفظتك" autocomplete="off" />
+
+                <label>المبلغ المراد سحبه</label>
+                <input id="withdrawAmount" type="number" min="20" step="0.01" placeholder="الحد الأدنى 20 USDT" />
+
+                <div class="fee-box">
+                  <div><span>حالة الطلب:</span><strong>يتطلب تفعيل الخادم</strong></div>
+                  <div><span>مدة المراجعة المعلنة:</span><strong>حتى 72 ساعة</strong></div>
+                </div>
+
+                <button id="withdrawBtn" class="gold-btn">تأكيد طلب السحب</button>
+              </div>
+            </section>
+
+            <section class="page-panel" id="profilePage">
+              <div class="profile-header">
+                <div class="avatar">GB</div>
+                <div>
+                  <h3 id="profilePhone">+966 500000000</h3>
+                  <span id="profileEmail">user@goldbless.com</span>
+                </div>
+              </div>
+
+              <div class="profile-list">
+                <div><span>كود الدعوة</span><strong id="profileInvite">GB123456</strong></div>
+                <div><span>مستوى الحساب</span><strong id="profileLevel" class="gold">Level 1</strong></div>
+                <div><span>الرصيد الحالي</span><strong class="green" id="profileBalance">0.00 USDT</strong></div>
+                <div><span>إجمالي الأرباح السابقة</span><strong class="green" id="profileTotalIncome">0.00 USDT</strong></div>
+                <div><span>المحفظة</span><strong class="gold" id="profileWallet">TRC20</strong></div>
+              </div>
+
+              <button id="logoutBtn" class="logout-btn">تسجيل الخروج</button>
+            </section>
+          </main>
+
+          <nav class="bottom-nav" aria-label="التنقل الأساسي">
+            <button class="nav-item active" data-target="home"><span>🏠</span><small>الرئيسية</small></button>
+            <button class="nav-item" data-target="team"><span>👥</span><small>الفريق</small></button>
+            <button class="nav-item central" data-target="quantify"><span>⚡</span><small>التكميم</small></button>
+            <button class="nav-item" data-target="assets"><span>💼</span><small>الأصول</small></button>
+            <button class="nav-item" data-target="profile"><span>👤</span><small>حسابي</small></button>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
