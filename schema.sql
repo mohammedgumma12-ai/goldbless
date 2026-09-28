@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS email_otps (
   invite_code TEXT,
   phone TEXT,
   password_hash TEXT,
-  purpose TEXT NOT NULL DEFAULT 'register' CHECK (purpose IN ('register', 'reset_password')),
+  purpose TEXT NOT NULL DEFAULT 'register' CHECK (purpose IN ('register', 'reset_password', 'withdrawal')),
   expires_at TIMESTAMPTZ NOT NULL,
   attempts INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -27,6 +27,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAU
 ALTER TABLE email_otps ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE email_otps ADD COLUMN IF NOT EXISTS password_hash TEXT;
 ALTER TABLE email_otps ADD COLUMN IF NOT EXISTS purpose TEXT NOT NULL DEFAULT 'register';
+ALTER TABLE email_otps DROP CONSTRAINT IF EXISTS email_otps_purpose_check;
+ALTER TABLE email_otps ADD CONSTRAINT email_otps_purpose_check CHECK (purpose IN ('register', 'reset_password', 'withdrawal'));
 
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,

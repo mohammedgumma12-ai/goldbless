@@ -118,12 +118,7 @@
               <input type="text" id="inviteCodeInput" placeholder="أدخل كود الإحالة" />
             </div>
 
-            <div class="field-group hidden" id="registerOtpBlock">
-              <label>رمز التحقق المرسل إلى بريدك</label>
-              <input type="text" id="registerCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
-            </div>
-
-            <button type="submit" id="registerSubmitBtn" class="primary-btn">إرسال رمز التحقق</button>
+            <button type="submit" class="primary-btn">إنشاء الحساب</button>
           </form>
 
           <form id="forgotForm" class="auth-form">
@@ -132,7 +127,7 @@
               <input type="tel" id="recoveryPhone" placeholder="+966500000000" autocomplete="tel" required />
             </div>
             <div class="field-group">
-              <label for="recoveryEmail">البريد الإلكتروني الموثق</label>
+              <label for="recoveryEmail">البريد الإلكتروني المسجل</label>
               <input type="email" id="recoveryEmail" placeholder="name@example.com" autocomplete="email" required />
             </div>
             <button id="recoverySendBtn" type="button" class="ghost-btn">إرسال رمز الاستعادة</button>
@@ -297,6 +292,12 @@
 
                 <label>المبلغ المراد سحبه</label>
                 <input id="withdrawAmount" type="number" min="20" step="0.01" placeholder="الحد الأدنى 20 USDT" />
+
+                <div class="field-group hidden" id="withdrawOtpBlock">
+                  <label for="withdrawCode">رمز التحقق المرسل إلى بريدك</label>
+                  <input id="withdrawCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" />
+                  <button id="verifyWithdrawalBtn" type="button" class="ghost-btn">تأكيد البريد وإكمال السحب</button>
+                </div>
 
                 <div class="fee-box">
                   <div><span>حالة الطلب:</span><strong>يتطلب تفعيل الخادم</strong></div>

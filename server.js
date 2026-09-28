@@ -120,7 +120,7 @@ async function requireUser(request, response, next) {
     if (!token) return response.status(401).json({ error: 'يجب تسجيل الدخول أولاً' });
     const tokenHash = hash(token, process.env.SESSION_SECRET);
     const result = await pool.query(
-      `SELECT users.id, users.email, users.invite_code, users.phone
+      `SELECT users.id, users.email, users.invite_code, users.phone, users.email_verified
        FROM sessions JOIN users ON users.id = sessions.user_id
        WHERE sessions.token_hash = $1 AND sessions.expires_at > NOW()`,
       [tokenHash]
@@ -144,8 +144,8 @@ function requireAdmin(request, response, next) {
 async function sendOtp(email, code, purpose) {
   const apiKey = process.env.BREVO_API_KEY;
   const senderEmail = process.env.SENDER_EMAIL || 'mohammedgumma12@gmail.com';
-  const subject = purpose === 'register' ? 'توثيق البريد الإلكتروني - Goldbless' : 'رمز استعادة كلمة المرور - Goldbless';
-  const purposeText = purpose === 'register' ? 'لتوثيق حسابك وتسجيل الدخول' : 'لاستعادة كلمة المرور الخاصة بك';
+  const subject = purpose === 'withdrawal' ? 'توثيق السحب - Goldbless' : 'رمز استعادة كلمة المرور - Goldbless';
+  const purposeText = purpose === 'withdrawal' ? 'لتأكيد طلب السحب' : 'لاستعادة كلمة المرور الخاصة بك';
 
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -187,13 +187,13 @@ app.get('/api/config', (_request, response) => {
   });
 });
 
-app.post('/api/auth/register/request-code', requireDatabase, requireServices('BREVO_API_KEY', 'OTP_SECRET'), otpLimiter, async (request, response, next) => {
+app.post('/api/auth/register', requireDatabase, requireServices('SESSION_SECRET'), otpLimiter, async (request, response, next) => {
   try {
     const email = normalizeEmail(request.body?.email);
     const phone = normalizePhone(request.body?.phone);
     const password = typeof request.body?.password === 'string' ? request.body.password : '';
     const inviteCode = typeof request.body?.inviteCode === 'string' ? request.body.inviteCode.trim() : '';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) \vert{}\vert{} !/^\+[1-9]\d{7,14}$/.test(phone)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\+[1-9]\d{7,14}$/.test(phone)) {
       return response.status(400).json({ error: 'تحقق من البريد الإلكتروني ورقم الهاتف مع مفتاح الدولة' });
     }
     if (!/^\d{8}$/.test(password)) return response.status(400).json({ error: 'كلمة المرور يجب أن تكون 8 أرقام بالضبط' });
@@ -205,16 +205,15 @@ app.post('/api/auth/register/request-code', requireDatabase, requireServices('BR
     const validBootstrap = !existingUsers.rows[0].has_users && process.env.BOOTSTRAP_INVITE_CODE && inviteCode === process.env.BOOTSTRAP_INVITE_CODE;
     if (!referral.rowCount && !validBootstrap) return response.status(400).json({ error: 'كود الإحالة غير معروف' });
     const passwordHash = await createPasswordHash(password);
-    await storeAndSendOtp({
-      email,
-      code: String(randomInt(100000, 1000000)),
-      purpose: 'register',
-      phone,
-      inviteCode,
-      passwordHash
-    });
-    response.json({ ok: true, message: 'أُرسل رمز توثيق البريد الإلكتروني' });
+    const created = await pool.query(
+      `INSERT INTO users (email, phone, password_hash, email_verified, invite_code, referred_by)
+       VALUES ($1, $2, $3, FALSE, $4, $5) RETURNING id, email, phone, invite_code`,
+      [email, phone, passwordHash, `GB${randomBytes(6).toString('hex').toUpperCase()}`, referral.rows[0]?.id || null]
+    );
+    await createSession(created.rows[0].id, response);
+    response.status(201).json({ user: created.rows[0] });
   } catch (error) {
+    if (error.code === '23505') return response.status(409).json({ error: 'البريد أو رقم الهاتف مسجل مسبقًا' });
     next(error);
   }
 });
@@ -223,18 +222,17 @@ app.post('/api/auth/login', requireDatabase, requireServices('SESSION_SECRET'), 
   try {
     const phone = normalizePhone(request.body?.phone);
     const password = typeof request.body?.password === 'string' ? request.body.password : '';
-    if (!/^\+[1-9]\d{7,14}$/.test(phone) \vert{}\vert{} !/^\d{8}$/.test(password)) {
+    if (!/^\+[1-9]\d{7,14}$/.test(phone) || !/^\d{8}$/.test(password)) {
       return response.status(400).json({ error: 'أدخل رقم الهاتف الدولي وكلمة المرور ذات 8 أرقام' });
     }
     const result = await pool.query(
-      'SELECT id, email, phone, invite_code, password_hash, email_verified FROM users WHERE phone = $1',
+      'SELECT id, email, phone, invite_code, password_hash FROM users WHERE phone = $1',
       [phone]
     );
     const user = result.rows[0];
     if (!user || !await verifyPassword(password, user.password_hash)) {
       return response.status(401).json({ error: 'رقم الهاتف أو كلمة المرور غير صحيحة' });
     }
-    if (!user.email_verified) return response.status(403).json({ error: 'يجب توثيق البريد الإلكتروني أولًا' });
     await createSession(user.id, response);
     response.json({ user: { id: user.id, email: user.email, phone: user.phone, invite_code: user.invite_code } });
   } catch (error) {
@@ -246,7 +244,7 @@ app.post('/api/auth/recovery/request-code', requireDatabase, requireServices('BR
   try {
     const email = normalizeEmail(request.body?.email);
     const phone = normalizePhone(request.body?.phone);
-    const result = await pool.query('SELECT id FROM users WHERE email = $1 AND phone = $2 AND email_verified = TRUE', [email, phone]);
+    const result = await pool.query('SELECT id FROM users WHERE email = $1 AND phone = $2', [email, phone]);
     if (!result.rowCount) return response.status(404).json({ error: 'لم نجد حسابًا مطابقًا لهذا البريد ورقم الهاتف' });
     await storeAndSendOtp({ email, code: String(randomInt(100000, 1000000)), purpose: 'reset_password', phone });
     response.json({ ok: true, message: 'أُرسل رمز الاستعادة إلى البريد الموثق' });
@@ -260,7 +258,7 @@ app.post('/api/auth/recovery/reset', requireDatabase, requireServices('OTP_SECRE
   const phone = normalizePhone(request.body?.phone);
   const code = typeof request.body?.code === 'string' ? request.body.code.trim() : '';
   const password = typeof request.body?.password === 'string' ? request.body.password : '';
-  if (!/^\d{6}$/.test(code) \vert{}\vert{} !/^\d{8}$/.test(password)) {
+  if (!/^\d{6}$/.test(code) || !/^\d{8}$/.test(password)) {
     return response.status(400).json({ error: 'رمز الاستعادة أو كلمة المرور الجديدة غير صالحة' });
   }
   let client;
@@ -280,7 +278,7 @@ app.post('/api/auth/recovery/reset', requireDatabase, requireServices('OTP_SECRE
     }
     const passwordHash = await createPasswordHash(password);
     const updated = await client.query(
-      'UPDATE users SET password_hash = $1 WHERE email = $2 AND phone = $3 AND email_verified = TRUE RETURNING id',
+      'UPDATE users SET password_hash = $1 WHERE email = $2 AND phone = $3 RETURNING id',
       [passwordHash, email, phone]
     );
     if (!updated.rowCount) {
@@ -299,47 +297,45 @@ app.post('/api/auth/recovery/reset', requireDatabase, requireServices('OTP_SECRE
   }
 });
 
-app.post('/api/auth/register/verify-code', requireDatabase, requireServices('SESSION_SECRET', 'OTP_SECRET'), otpLimiter, async (request, response, next) => {
-  const email = normalizeEmail(request.body?.email);
+app.post('/api/auth/withdrawal/request-code', requireDatabase, requireServices('SESSION_SECRET', 'BREVO_API_KEY', 'OTP_SECRET'), requireUser, otpLimiter, async (request, response, next) => {
+  try {
+    const user = await pool.query('SELECT email_verified FROM users WHERE id = $1', [request.user.id]);
+    if (user.rows[0]?.email_verified) return response.status(400).json({ error: 'البريد الإلكتروني موثّق بالفعل' });
+    await storeAndSendOtp({
+      email: request.user.email,
+      code: String(randomInt(100000, 1000000)),
+      purpose: 'withdrawal'
+    });
+    response.json({ ok: true, message: 'أُرسل رمز التوثيق إلى بريدك الإلكتروني' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/auth/withdrawal/verify-code', requireDatabase, requireServices('SESSION_SECRET', 'OTP_SECRET'), requireUser, otpLimiter, async (request, response, next) => {
   const code = typeof request.body?.code === 'string' ? request.body.code.trim() : '';
   if (!/^\d{6}$/.test(code)) return response.status(400).json({ error: 'رمز التحقق غير صالح' });
   let client;
   try {
     client = await pool.connect();
     await client.query('BEGIN');
-    const otpResult = await client.query('SELECT * FROM email_otps WHERE email = $1 FOR UPDATE', [email]);
+    const otpResult = await client.query('SELECT * FROM email_otps WHERE email = $1 FOR UPDATE', [request.user.email]);
     const otp = otpResult.rows[0];
-    if (!otp || otp.purpose !== 'register' || new Date(otp.expires_at) <= new Date() || otp.attempts >= 5) {
+    if (!otp || otp.purpose !== 'withdrawal' || new Date(otp.expires_at) <= new Date() || otp.attempts >= 5) {
       await client.query('ROLLBACK');
       return response.status(400).json({ error: 'رمز التحقق غير صالح أو منتهي الصلاحية' });
     }
     if (!safeEqual(otp.otp_hash, hash(code, process.env.OTP_SECRET))) {
-      await client.query('UPDATE email_otps SET attempts = attempts + 1 WHERE email = $1', [email]);
+      await client.query('UPDATE email_otps SET attempts = attempts + 1 WHERE email = $1', [request.user.email]);
       await client.query('COMMIT');
       return response.status(400).json({ error: 'رمز التحقق غير صحيح' });
     }
-    const referral = await client.query('SELECT id FROM users WHERE invite_code = $1', [otp.invite_code]);
-    let referrerId = referral.rows[0]?.id || null;
-    if (!referrerId) {
-      const existingUsers = await client.query('SELECT EXISTS (SELECT 1 FROM users) AS has_users');
-      const validBootstrap = !existingUsers.rows[0].has_users && process.env.BOOTSTRAP_INVITE_CODE && otp.invite_code === process.env.BOOTSTRAP_INVITE_CODE;
-      if (!validBootstrap) {
-        await client.query('ROLLBACK');
-        return response.status(400).json({ error: 'كود الإحالة غير معروف' });
-      }
-    }
-    const created = await client.query(
-      `INSERT INTO users (email, phone, password_hash, email_verified, invite_code, referred_by)
-       VALUES ($1, $2, $3, TRUE, $4, $5) RETURNING id, email, phone, invite_code`,
-      [email, otp.phone, otp.password_hash, `GB${randomBytes(6).toString('hex').toUpperCase()}`, referrerId]
-    );
-    await client.query('DELETE FROM email_otps WHERE email = $1', [email]);
+    await client.query('UPDATE users SET email_verified = TRUE WHERE id = $1', [request.user.id]);
+    await client.query('DELETE FROM email_otps WHERE email = $1', [request.user.email]);
     await client.query('COMMIT');
-    await createSession(created.rows[0].id, response);
-    response.json({ user: created.rows[0] });
+    response.json({ ok: true, message: 'تم توثيق البريد الإلكتروني' });
   } catch (error) {
     if (client) await client.query('ROLLBACK').catch(() => {});
-    if (error.code === '23505') return response.status(409).json({ error: 'البريد أو رقم الهاتف مسجل مسبقًا' });
     next(error);
   } finally {
     client?.release();
@@ -394,6 +390,9 @@ app.post('/api/withdrawals', requireDatabase, requireServices('SESSION_SECRET'),
   const wallet = typeof request.body?.walletAddress === 'string' ? request.body.walletAddress.trim() : '';
   if (!/^\d{1,8}(?:\.\d{1,6})?$/.test(amount) || Number(amount) < 20 || Number(amount) > 10000000 || !tronAddressPattern.test(wallet)) {
     return response.status(400).json({ error: 'الحد الأدنى 20 USDT ويلزم عنوان TRC20 صالح' });
+  }
+  if (!request.user.email_verified) {
+    return response.status(403).json({ error: 'يجب توثيق البريد الإلكتروني قبل السحب', requiresVerification: true });
   }
 
   let client;

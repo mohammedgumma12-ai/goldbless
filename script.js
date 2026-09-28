@@ -10,7 +10,6 @@ const quickItems = document.querySelectorAll('.quick-item');
 const state = {
   authMode: 'login',
   isLoggedIn: false,
-  registerOtpRequested: false,
   recoveryOtpRequested: false,
   referrerCode: '',
   referralCount: 0,
@@ -121,7 +120,11 @@ async function apiRequest(route, data) {
     body: data ? JSON.stringify(data) : undefined
   });
   const result = await response.json().catch(() => ({ error: 'فشل الاتصال بالخادم. أعد المحاولة.' }));
-  if (!response.ok) throw new Error(result.error || 'تعذر إكمال الطلب');
+  if (!response.ok) {
+    const error = new Error(result.error || 'تعذر إكمال الطلب');
+    error.requiresVerification = Boolean(result.requiresVerification);
+    throw error;
+  }
   return result;
 }
 
@@ -195,18 +198,7 @@ async function register() {
   }
 
   try {
-    if (!state.registerOtpRequested) {
-      await apiRequest('/auth/register/request-code', { email, inviteCode, phone, password });
-      state.registerOtpRequested = true;
-      const otpBlock = document.getElementById('registerOtpBlock');
-      if (otpBlock) otpBlock.classList.remove('hidden');
-      const submitBtn = document.getElementById('registerSubmitBtn');
-      if (submitBtn) submitBtn.textContent = 'تأكيد الرمز وإنشاء الحساب';
-      showToast('أُرسل رمز توثيق البريد الإلكتروني بنجاح');
-      return;
-    }
-
-    await apiRequest('/auth/register/verify-code', { email, code: document.getElementById('registerCode').value.trim() });
+    await apiRequest('/auth/register', { email, inviteCode, phone, password });
     await loadAccount();
     showToast('تم إنشاء الحساب وتسجيل الدخول بنجاح');
   } catch (error) {
@@ -223,7 +215,7 @@ async function requestRecoveryCode() {
     state.recoveryOtpRequested = true;
     const otpBlock = document.getElementById('recoveryOtpBlock');
     if (otpBlock) otpBlock.classList.remove('hidden');
-    showToast('أُرسل رمز الاستعادة إلى البريد الموثق');
+    showToast('أُرسل رمز الاستعادة إلى بريد الحساب');
   } catch (error) {
     showToast(error.message, 'error');
   }
@@ -333,7 +325,7 @@ bindIfExists('copyReferralBtn', () => copyText(getRefLink()));
 bindIfExists('copyPromoBtn', () => copyText(getRefLink()));
 bindIfExists('copyInviteBtn', () => copyText(getRefLink()));
 
-bindIfExists('withdrawBtn', async () => {
+async function submitWithdrawal() {
   const amountInput = document.getElementById('withdrawAmount');
   const walletInput = document.getElementById('withdrawWallet');
   const amount = amountInput ? amountInput.value.trim() : '';
@@ -352,6 +344,33 @@ bindIfExists('withdrawBtn', async () => {
     if (amountInput) amountInput.value = '';
     showToast(`تم تسجيل طلب السحب للمراجعة خلال ${result.reviewHours || 24} ساعة`);
     await loadAccount();
+  } catch (error) {
+    if (error.requiresVerification) {
+      try {
+        await apiRequest('/auth/withdrawal/request-code', {});
+        const otpBlock = document.getElementById('withdrawOtpBlock');
+        if (otpBlock) otpBlock.classList.remove('hidden');
+        showToast('أُرسل رمز التحقق إلى بريدك لإكمال السحب');
+      } catch (verificationError) {
+        showToast(verificationError.message, 'error');
+      }
+      return;
+    }
+    showToast(error.message, 'error');
+  }
+}
+
+bindIfExists('withdrawBtn', submitWithdrawal);
+bindIfExists('verifyWithdrawalBtn', async () => {
+  try {
+    await apiRequest('/auth/withdrawal/verify-code', {
+      code: document.getElementById('withdrawCode').value.trim()
+    });
+    const otpBlock = document.getElementById('withdrawOtpBlock');
+    if (otpBlock) otpBlock.classList.add('hidden');
+    document.getElementById('withdrawCode').value = '';
+    showToast('تم توثيق البريد، جارٍ إكمال طلب السحب');
+    await submitWithdrawal();
   } catch (error) {
     showToast(error.message, 'error');
   }
